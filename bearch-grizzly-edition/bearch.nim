@@ -106,3 +106,8 @@ proc installFavoriteApps() =
 
 # Poziv u meniju:
 echo "5. Install Favorite Apps"
+
+# Poziv u case bloku
+let appChoice = readLine(stdin)
+if appChoice == "5":
+  installFavoriteApps()
