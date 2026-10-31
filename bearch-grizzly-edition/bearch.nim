@@ -89,3 +89,17 @@ when isMainModule:
     installDesktopEnvironment("hyprland")
   else:
     echo "[!] Nelegalan izbor."
+
+proc installFavoriteApps() =
+  echo "=========================================="
+  echo "   INSTALACIJA OMILJENIH APLIKACIJA       "
+  echo "=========================================="
+  let packages = @["firefox", "vlc", "htop", "git", "tmux"]
+  for pkg in packages:
+    echo "Instaliram: ", pkg
+    let status = execShellCmd("sudo pacman -S --noconfirm " & pkg)
+    if status != 0:
+      echo "[!] Greska pri instalaciji: ", pkg
+    else:
+      echo "[+] Uspesno instalirano: ", pkg
+  echo "Instalacija zavrsena!"
