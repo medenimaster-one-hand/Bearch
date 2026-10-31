@@ -50,4 +50,22 @@ when isMainModule:
   echo "=========================================="
   echo "     BEARCH OS - GRIZZLY EDITION          "
   echo "=========================================="
-  installMedoxSecuritySuite()
+  echo "1. Install Medox Security Suite"
+  echo "2. Install Desktop Environment (KDE)"
+  echo "3. Install Desktop Environment (Cinnamon)"
+  echo "4. Install Desktop Environment (Hyprland)"
+  echo "=========================================="
+  stdout.write "Izaberi opciju [1-4]: "
+  let choice = readLine(stdin)
+ 
+  case choice.strip()
+  of "1":
+    installMedoxSecuritySuite()
+  of "2":
+    installDesktopEnvironment("kde")
+  of "3":
+    installDesktopEnvironment("cinnamon")
+  of "4":
+    installDesktopEnvironment("hyprland")
+  else:
+    echo "[!] Nelegan izbor."
