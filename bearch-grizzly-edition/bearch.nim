@@ -103,3 +103,6 @@ proc installFavoriteApps() =
     else:
       echo "[+] Uspesno instalirano: ", pkg
   echo "Instalacija zavrsena!"
+
+# Poziv u meniju:
+echo "5. Install Favorite Apps"
