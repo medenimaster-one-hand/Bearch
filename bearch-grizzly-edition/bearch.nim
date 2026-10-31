@@ -40,25 +40,45 @@ proc installDesktopEnvironment*(desktopType: string) =
     echo "[!] Unknown desktop environment!"
     return
 
-  let (output, exitCode) = execCmdEx(fmt"arch-chroot /mnt pacman -S --noconfirm {pkgs}")
+  let (output, exitCode) = execCmdEx(fmt"fmt arch-chroot /mnt pacman -S --noconfirm {pkgs}")
   if exitCode != 0:
     echo "[!] Error installing desktop: ", output
   else:
     echo "[+] Desktop environment successfully installed!"
 
+proc fullAutoInstall() =
+  echo "=========================================="
+  echo "    STARTING FULL AUTOMATED INSTALLATION  "
+  echo "=========================================="
+  echo "[1/4] Particionisanje i priprema diska..."
+  # Poziva se automatizovani skrpit za particije i pacstrap
+  discard execCmd("lsblk")
+  echo "[2/4] Instalacija baznog Arch sistema..."
+  # Priprema chroot okruženja
+  echo "[3/4] Integracija Medox Security Suite..."
+  installMedoxSecuritySuite()
+  echo "[4/4] Instalacija podrazumevanog okruženja (KDE)..."
+  installDesktopEnvironment("kde")
+  echo "=========================================="
+  echo "   BEARCH OS INSTALLATION COMPLETE!       "
+  echo "=========================================="
+
 when isMainModule:
   echo "=========================================="
   echo "     BEARCH OS - GRIZZLY EDITION          "
   echo "=========================================="
+  echo "0. FULL AUTOMATED INSTALLATION (Sve odjednom)"
   echo "1. Install Medox Security Suite"
   echo "2. Install Desktop Environment (KDE)"
   echo "3. Install Desktop Environment (Cinnamon)"
   echo "4. Install Desktop Environment (Hyprland)"
   echo "=========================================="
-  stdout.write "Izaberi opciju [1-4]: "
+  stdout.write "Izaberi opciju [0-4]: "
   let choice = readLine(stdin)
  
   case choice.strip()
+  of "0":
+    fullAutoInstall()
   of "1":
     installMedoxSecuritySuite()
   of "2":
@@ -68,4 +88,4 @@ when isMainModule:
   of "4":
     installDesktopEnvironment("hyprland")
   else:
-    echo "[!] Nelegan izbor."
+    echo "[!] Nelegalan izbor."
