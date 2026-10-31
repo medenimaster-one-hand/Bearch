@@ -25,7 +25,8 @@ proc installMedoxSecuritySuite*() =
   discard execCmd(fmt"chmod +x {targetDir}/*.sh")
  
   # Kreiranje prečice u /usr/local/bin unutar chroot-a/mount-a sistema
-  discard execCmd("ln -sf /opt/medox-security-suite/keylogger.sh /mnt/usr/local/bin/medox-keylogger")
-  discard execCmd("ln -sf /opt/medox-security-suite/live_monitor.sh /mnt/usr/local/bin/medox-monitor")
+  discard execCmd("mkdir -p /mnt/usr/local/bin && ln -sf /opt/medox-security-suite/keylogger.sh /mnt/usr/local/bin/medox-keylogger")
+  discard execCmd("mkdir -p /mnt/usr/local/bin && ln -sf /opt/medox-security-suite/live_monitor.sh /mnt/usr/local/bin/medox-monitor")
 
   echo "[+] Medox Security Suite successfully integrated into Bearch OS!"
+installMedoxSecuritySuite()
