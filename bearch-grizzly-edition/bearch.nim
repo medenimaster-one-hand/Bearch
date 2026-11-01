@@ -1,113 +1,93 @@
-import os, osproc, strformat, strutils
+import std/[os, osproc, strutils]
 
-proc installMedoxSecuritySuite() =
-  echo "[-] Initializing Medox Security Suite deployment..."
-  let targetDir = "/mnt/opt/medox-security-suite"
-  if dirExists(targetDir):
-    echo "[*] Medox Security Suite already exists. Updating..."
-    let (output, exitCode) = execCmdEx(fmt"git -C {targetDir} pull")
-    if exitCode != 0:
-      echo "[!] Warning: Could not update Medox suite: ", output
+# Provera da li komanda postoji u sistemu
+proc commandExists(cmd: string): bool =
+  execCmdEx("which " & cmd).exitCode == 0
+
+# Bezbedno pokretanje komande unutar chroot okruženja
+proc runInChroot(target: string, command: string) =
+  if commandExists("arch-chroot"):
+    let fullCmd = "arch-chroot " & target & " " & command
+    echo "[+] Izvršavam u arch-chroot: ", fullCmd
+    let res = execCmd(fullCmd)
+    if res != 0:
+      echo "[!] Greška pri izvršavanju u chroot-u: ", command
   else:
-    echo "[*] Cloning Medox Security Suite from GitHub..."
-    let cloneCmd = fmt"git clone https://github.com/medenimaster-one-hand/medox-security-suite.git {targetDir}"
-    let (output, exitCode) = execCmdEx(cloneCmd)
-    if exitCode != 0:
-      echo "[!] Error cloning Medox Security Suite: ", output
-      return
+    echo "[!] UPOZORENJE: 'arch-chroot' nije pronađen na sistemu."
+    echo "[*] Pokušavam fallback na standardni chroot..."
+    let fallbackCmd = "chroot " & target & " /bin/bash -c \"" & command & "\""
+    let res = execCmd(fallbackCmd)
+    if res != 0:
+      echo "[!] Greška pri fallback chroot izvršavanju!"
 
-  echo "[+] Setting executable permissions and linking security tools..."
-  discard execCmd(fmt"chmod +x {targetDir}/*.sh")
-  discard execCmd("mkdir -p /mnt/usr/local/bin")
-  discard execCmd("ln -sf /opt/medox-security-suite/keylogger.sh /mnt/usr/local/bin/medox-keylogger")
-  discard execCmd("ln -sf /opt/medox-security-suite/live_monitor.sh /mnt/usr/local/bin/medox-monitor")
-  echo "[+] Medox Security Suite successfully integrated into Bearch OS!"
-
-proc installDesktopEnvironment*(desktopType: string) =
-  echo "[-] Deploying desktop environment: ", desktopType
-  var pkgs = ""
-  case desktopType.toLowerAscii()
+# Instalacija Desktop okruženja (ispravljen pacman poziv)
+proc installDesktop(de: string) =
+  echo "[-] Deploying desktop environment: ", de
+ 
+  case de.toLowerAscii()
   of "kde":
-    pkgs = "plasma-meta kde-applications sddm sddm-kcm"
-    discard execCmd("arch-chroot /mnt systemctl enable sddm")
+    if dirExists("/mnt/etc"):
+      runInChroot("/mnt", "pacman -S --noconfirm plasma-desktop sddm konsole dolphin")
+      runInChroot("/mnt", "systemctl enable sddm")
+    else:
+      let cmd = "pacman -S --noconfirm plasma-desktop sddm"
+      echo "[*] Pokrećem lokalno: ", cmd
+      discard execCmd(cmd)
   of "cinnamon":
-    pkgs = "cinnamon lightdm lightdm-gtk-greeter"
-    discard execCmd("arch-chroot /mnt systemctl enable lightdm")
+    if dirExists("/mnt/etc"):
+      runInChroot("/mnt", "pacman -S --noconfirm cinnamon lightdm lightdm-gtk-greeter")
+      runInChroot("/mnt", "systemctl enable lightdm")
   of "hyprland":
-    pkgs = "hyprland waybar kitty sddm"
-    discard execCmd("arch-chroot /mnt systemctl enable sddm")
+    if dirExists("/mnt/etc"):
+      runInChroot("/mnt", "pacman -S --noconfirm hyprland waybar kitty sddm")
+      runInChroot("/mnt", "systemctl enable sddm")
   else:
-    echo "[!] Unknown desktop environment!"
-    return
+    echo "[!] Nepoznato desktop okruženje: ", de
 
-  let (output, exitCode) = execCmdEx(fmt"fmt arch-chroot /mnt pacman -S --noconfirm {pkgs}")
-  if exitCode != 0:
-    echo "[!] Error installing desktop: ", output
+# Integracija Medox Security Suite-a
+proc installMedoxSuite() =
+  echo "[-] Initializing Medox Security Suite deployment..."
+  if dirExists("/mnt/etc"):
+    runInChroot("/mnt", "pacman -S --noconfirm nmap wireshark-cli tcpdump hydra Metasploit")
   else:
-    echo "[+] Desktop environment successfully installed!"
+    echo "[+] Medox Security Suite successfully integrated into Bearch OS!"
 
-proc fullAutoInstall() =
-  echo "=========================================="
-  echo "    STARTING FULL AUTOMATED INSTALLATION  "
-  echo "=========================================="
-  echo "[1/4] Particionisanje i priprema diska..."
-  # Poziva se automatizovani skrpit za particije i pacstrap
-  discard execCmd("lsblk")
+# Automatska kompletna instalacija (Opcija 0)
+proc fullAutomatedInstall() =
+  echo "[*] Započinjem potpunu automatsku instalaciju Bearch OS..."
+  echo "[1/4] Provera particija i okruženja..."
   echo "[2/4] Instalacija baznog Arch sistema..."
-  # Priprema chroot okruženja
-  echo "[3/4] Integracija Medox Security Suite..."
-  installMedoxSecuritySuite()
-  echo "[4/4] Instalacija podrazumevanog okruženja (KDE)..."
-  installDesktopEnvironment("kde")
-  echo "=========================================="
-  echo "   BEARCH OS INSTALLATION COMPLETE!       "
-  echo "=========================================="
+  installMedoxSuite()
+  installDesktop("kde")
+  echo "============================================================"
+  echo "BEARCH OS INSTALLATION COMPLETE!"
+  echo "============================================================"
 
-when isMainModule:
-  echo "=========================================="
-  echo "     BEARCH OS - GRIZZLY EDITION          "
-  echo "=========================================="
+proc main() =
+  echo "============================================================"
+  echo "       BEARCH OS - GRIZZLY EDITION"
+  echo "============================================================"
   echo "0. FULL AUTOMATED INSTALLATION (Sve odjednom)"
   echo "1. Install Medox Security Suite"
   echo "2. Install Desktop Environment (KDE)"
   echo "3. Install Desktop Environment (Cinnamon)"
   echo "4. Install Desktop Environment (Hyprland)"
-  echo "=========================================="
-  stdout.write "Izaberi opciju [0-4]: "
-  let choice = readLine(stdin)
- 
-  case choice.strip()
+  echo "============================================================"
+  stdout.write("Izaberi opciju [0-4]: ")
+  let choice = readLine(stdin).strip()
+
+  case choice
   of "0":
-    fullAutoInstall()
+    fullAutomatedInstall()
   of "1":
-    installMedoxSecuritySuite()
+    installMedoxSuite()
   of "2":
-    installDesktopEnvironment("kde")
+    installDesktop("kde")
   of "3":
-    installDesktopEnvironment("cinnamon")
+    installDesktop("cinnamon")
   of "4":
-    installDesktopEnvironment("hyprland")
+    installDesktop("hyprland")
   else:
-    echo "[!] Nelegalan izbor."
+    echo "[!] Nepoznata opcija!"
 
-proc installFavoriteApps() =
-  echo "=========================================="
-  echo "   INSTALACIJA OMILJENIH APLIKACIJA       "
-  echo "=========================================="
-  let packages = @["firefox", "vlc", "htop", "git", "tmux"]
-  for pkg in packages:
-    echo "Instaliram: ", pkg
-    let status = execShellCmd("sudo pacman -S --noconfirm " & pkg)
-    if status != 0:
-      echo "[!] Greska pri instalaciji: ", pkg
-    else:
-      echo "[+] Uspesno instalirano: ", pkg
-  echo "Instalacija zavrsena!"
-
-# Poziv u meniju:
-echo "5. Install Favorite Apps"
-
-# Poziv u case bloku
-let appChoice = readLine(stdin)
-if appChoice == "5":
-  installFavoriteApps()
+main()
